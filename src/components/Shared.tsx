@@ -3,7 +3,7 @@ import { audio, type Settings } from '../audio/mixer';
 import { assetUrl } from '../game/assets';
 
 export function Modal({ title, eyebrow, children, onClose, wide = false }: { title:string; eyebrow?:string; children:ReactNode;onClose:()=>void;wide?:boolean }) {
-  const ref=useRef<HTMLDivElement>(null), closeRef=useRef(onClose);closeRef.current=onClose;
+  const ref=useRef<HTMLDivElement>(null), closeRef=useRef(onClose);closeRef.current=()=>{void audio.play('back');onClose();};
   useEffect(()=>{
     const previous=document.activeElement as HTMLElement;
     ref.current?.focus();
@@ -21,7 +21,7 @@ export function Modal({ title, eyebrow, children, onClose, wide = false }: { tit
     return()=>{element?.removeEventListener('keydown',handler);if(previous?.isConnected)previous.focus();};
   },[]);
   return <div className="modal-backdrop"><section ref={ref} className={`modal ${wide?'modal-wide':''}`} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
-    <header className="modal-header"><div><span className="eyebrow">{eyebrow??'PELAGIC-9 / OPERATOR TERMINAL'}</span><h2>{title}</h2></div><button className="icon-button" aria-label={`Close ${title}`} onClick={onClose}>✕</button></header>
+    <header className="modal-header"><div><span className="eyebrow">{eyebrow??'PELAGIC-9 / OPERATOR TERMINAL'}</span><h2>{title}</h2></div><button className="icon-button" aria-label={`Close ${title}`} onClick={()=>closeRef.current()}>✕</button></header>
     {children}
   </section></div>;
 }
@@ -46,7 +46,7 @@ export function SettingsPanel({settings,onChange,onClose}:{settings:Settings;onC
       <p className="muted">Apply immediately. Settings reset when the page reloads.</p>
       {(['master','ambience','effects','voice'] as const).map(key=><div className="setting" key={key}>
         <label htmlFor={`volume-${key}`}>{key==='ambience'?'Music / ambience':key[0].toUpperCase()+key.slice(1)}<span className="mono">{settings[key]}%</span></label>
-        <div className="range-row"><input id={`volume-${key}`} type="range" min="0" max="100" value={settings[key]} onChange={e=>onChange({...settings,[key]:+e.target.value})}/><button className="small" aria-label={`Preview ${key} volume`} onClick={()=>{audio.init();audio.tone(300,key==='master'?'effects':key);}}>Preview</button></div>
+        <div className="range-row"><input id={`volume-${key}`} type="range" min="0" max="100" value={settings[key]} onChange={e=>onChange({...settings,[key]:+e.target.value})}/><button className="small" aria-label={`Preview ${key} volume`} onClick={()=>{audio.init();void audio.play('preview',key==='master'?'effects':key);}}>Preview</button></div>
       </div>)}
       <label className="toggle"><input type="checkbox" checked={settings.instant} onChange={e=>onChange({...settings,instant:e.target.checked})}/><span>Instant dialogue text</span></label>
       <label className="toggle"><input type="checkbox" checked={settings.reduced} onChange={e=>onChange({...settings,reduced:e.target.checked})}/><span>Reduced motion</span></label>

@@ -14,7 +14,7 @@ export default function App() {
   const [tool,setTool]=useState<ToolId|null>(null),[hoveredTool,setHoveredTool]=useState<ToolId|null>(null),[notebook,setNotebook]=useState(false),[settingsOpen,setSettingsOpen]=useState(false),[credits,setCredits]=useState(false),[deviceList,setDeviceList]=useState(false);
   const [confirm,setConfirm]=useState<boolean|null>(null),[reason,setReason]=useState(''),[exitConfirm,setExitConfirm]=useState(false);
   const [line,setLine]=useState(''),[page,setPage]=useState(0),[fade,setFade]=useState(false),[transitioning,setTransitioning]=useState(false),[beat,setBeat]=useState<{admit:boolean;name:string;line:string}|null>(null);
-  const busy=useRef(false),beatTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  const busy=useRef(false),beatTimer=useRef<ReturnType<typeof setTimeout>|null>(null),lastArrival=useRef<string|null>(null);
   const current=encounters[state.index],caseId=state.screen==='lab'?'lab':current.id;
   const observations=state.observations.filter(o=>o.caseId===caseId),artifacts=state.artifacts.filter(a=>a.caseId===caseId);
   const isPlaying=state.screen==='office'||state.screen==='exterior';const ending=resolveEnding(state.decisions);
@@ -22,10 +22,12 @@ export default function App() {
   useEffect(()=>{audio.update(settings);},[settings]);
   useEffect(()=>{
     void audio.scene(state.screen==='exterior'?'exterior':['office','briefing','ending'].includes(state.screen)?'office':null);
-    if(state.screen==='office')void audio.play('arrival');
+    if(state.screen==='office'&&lastArrival.current!==current.id){lastArrival.current=current.id;void audio.play('arrival');}
+    if(state.screen==='exterior')void audio.play('radio');
     if(state.screen==='ending')void audio.play(ending.secure?'secure':'failure');
   },[state.screen,state.index]);
   useEffect(()=>{setLine(current.intro);setPage(0);},[current.id,state.mode]);
+  useEffect(()=>{if(confirm!==null)void audio.play('confirm');},[confirm]);
   useEffect(()=>()=>{if(beatTimer.current)clearTimeout(beatTimer.current);void audio.scene(null);},[]);
   const transition=async(action:()=>void,destination:Screen)=>{
     if(busy.current)return;busy.current=true;setTransitioning(true);setFade(true);void audio.play('transition');
@@ -39,7 +41,7 @@ export default function App() {
   };
   const navigate=(screen:Screen)=>void transition(()=>dispatch({type:'screen',screen}),screen);
   const start=(mode:'full'|'demo')=>{
-    audio.init();setTool(null);setNotebook(false);setReason('');setConfirm(null);setLine(encounters[mode==='demo'?3:0].intro);
+    audio.init();lastArrival.current=null;setTool(null);setNotebook(false);setReason('');setConfirm(null);setLine(encounters[mode==='demo'?3:0].intro);
     if(mode==='demo')setSettings(s=>({...s,instant:true}));
     void transition(()=>dispatch({type:'start',mode}),mode==='demo'?'office':'briefing');
   };
@@ -52,7 +54,7 @@ export default function App() {
     if(confirm===null||beat)return;
     const admit=confirm;dispatch({type:'decide',decision:{caseId:current.id,admit,reason}});setConfirm(null);setBeat({admit,name:current.name,line:admit?current.admit:current.deny});void audio.play(admit?'admit':'deny');
     beatTimer.current=setTimeout(()=>{
-      setBeat(null);setReason('');
+      setBeat(null);setReason('');if(admit)void audio.play('occupancy');
       if(state.mode==='demo')navigate('debrief');
       else if(state.index===3)navigate('ending');
       else void transition(()=>{dispatch({type:'next'});dispatch({type:'screen',screen:'office'});},'office');

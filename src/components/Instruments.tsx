@@ -42,9 +42,9 @@ export function Instruments(props:Props) {
   const [reference,setReference]=useState(archives[0].id),[customRef,setCustomRef]=useState<{name:string;bytes:Uint8Array}|null>(null),[comparison,setComparison]=useState<Comparison|null>(null);
   const [recorded,setRecorded]=useState(false);
   const selected=artifacts.find(a=>a.id===selectedId)??artifacts[0];
-  const live=useRef(true);useEffect(()=>{live.current=true;return()=>{live.current=false;};},[]);
+  const live=useRef(true);useEffect(()=>{live.current=true;return()=>{live.current=false;audio.stopLoop('working');};},[]);
   useEffect(()=>{setComparison(null);setSignal(null);setRecorded(false);setStatus('Ready. Analysis runs on the selected bytes.');},[selected?.id,scheme,reference,customRef]);
-  const run=async(action:()=>Promise<void>)=>{setBusy(true);setRecorded(false);try{await action();}catch(e){if(live.current){setStatus(e instanceof Error?e.message:'Analysis failed.');void audio.play('error');}}finally{if(live.current)setBusy(false);}};
+  const run=async(action:()=>Promise<void>)=>{setBusy(true);setRecorded(false);void audio.startLoop('working');try{await action();}catch(e){if(live.current){setStatus(e instanceof Error?e.message:'Analysis failed.');void audio.play('error');}}finally{audio.stopLoop('working');if(live.current)setBusy(false);}};
   const loadModule=async(id:string)=>run(async()=>{const bytes=await fetchBytes(`evidence/${id}.bin`);if(!live.current)return;setModule({name:`${id}.bin`,bytes,origin:caseId==='lab'?'sample':'story'});setCandidates([]);setStatus('Recorder loaded. Scan to locate complete PNG candidates.');});
   const upload=async(file:File|undefined,referenceSlot=false)=>{if(!file)return;await run(async()=>{
     const bytes=await readLocal(file);if(!live.current)return;
@@ -56,7 +56,7 @@ export function Instruments(props:Props) {
   const scan=()=>run(async()=>{
     if(!module)return;void audio.play('scan');setStatus('Scanning signatures and validating chunk boundaries + CRCs…');
     const result=await analyze<Candidate[]>('scan',module.bytes);if(!live.current)return;setCandidates(result);
-    const recovered:Artifact[]=result.filter(c=>c.valid&&c.bytes).map(c=>({id:`${caseId}-${module.name}-${c.offset}-${c.length}`,name:`${module.name.replace(/\.[^.]+$/,'')}-${c.offset}.png`,bytes:c.bytes!,offset:c.offset,caseId,origin:module.origin,recovered:true}));
+    const recovered:Artifact[]=result.filter(c=>c.valid&&c.bytes).map(c=>({id:`${caseId}-${module.name}-${c.offset}-${c.length}`,name:`${module.name.replace(/\.[^.]+$/,'')}-${c.offset}.png`,bytes:c.bytes!,offset:c.offset,caseId,origin:module.origin,recovered:true,metadata:c.text}));
     onArtifacts(recovered);if(recovered.length)onSelect(recovered[0].id);
     setStatus(result.length?`${recovered.length} complete PNG${recovered.length===1?'':'s'} recovered · ${result.length-recovered.length} rejected candidate${result.length-recovered.length===1?'':'s'}.`:'No PNG signatures found in this input.');void audio.play(recovered.length?'found':'empty');
   });
@@ -65,12 +65,15 @@ export function Instruments(props:Props) {
   const record=()=>{
     if(!selected)return;
     let text='',unlock=selected.origin==='story';
-    if(tool==='recovery'){text=`Recovered ${selected.name}: complete PNG at byte ${selected.offset.toLocaleString()}, ${selected.bytes.length.toLocaleString()} bytes; chunk CRCs verified.`;}
+    if(tool==='recovery'){
+      text=`Recovered ${selected.name}: complete PNG at byte ${selected.offset.toLocaleString()}, ${selected.bytes.length.toLocaleString()} bytes; chunk CRCs verified.`;
+      if(caseId==='mira')unlock=unlock&&selected.metadata?.Scene==='J4 service image / copper bridge fitted';
+    }
     if(tool==='signal'&&signal){text=signal.found?`Decoded ${scheme} P9LSB1 payload from ${selected.name}: “${signal.message}”`:signal.status;unlock=unlock&&signal.found;}
     if(tool==='compare'&&comparison){text=`${selected.name} and ${customRef?.name??archives.find(a=>a.id===reference)!.label}: ${comparison.identical?'identical bytes':'different bytes'} (SHA-256). Examined digest: ${comparison.hashA}.`;unlock=unlock&&!customRef&&(caseId==='mira'?reference==='j4'&&!comparison.identical:reference==='c7'&&comparison.identical);}
     onObservation({id:`${caseId}-${tool}-${selected.id}-${tool==='signal'?scheme:tool==='compare'?customRef?.name??reference:''}`,caseId,kind:tool,text,fileName:selected.name,fingerprint:comparison?.hashA,unlock});setRecorded(true);void audio.play('record');
   };
-  const candidateInfo=candidates.find(c=>c.valid&&c.offset===selected?.offset&&c.bytes?.length===selected?.bytes.length);
+  const metadata=selected?.metadata;
   const canRecord=!!selected&&(tool==='recovery'?!!selected.recovered:tool==='signal'?!!signal:!!comparison);
   return <Modal title={info.title} eyebrow={`INSTRUMENT ${info.number} / ${current?`${current.name.toUpperCase()} CASE`:'INDEPENDENT WORKSPACE'}`} onClose={onClose} wide>
     <nav className="tool-tabs" aria-label="Instruments">{(Object.keys(toolInfo) as ToolId[]).map(t=><button key={t} disabled={busy} aria-current={t===tool?'page':undefined} onClick={()=>onTool(t)}>{toolInfo[t].number} / {toolInfo[t].title}</button>)}</nav>
@@ -114,7 +117,7 @@ export function Instruments(props:Props) {
       </section>
       <aside className="instrument-result"><span className="eyebrow">03 / OBSERVATION</span>
         <h3>{tool==='recovery'?'Recovered record':tool==='signal'?'Extracted message':'Byte comparison'}</h3>
-        {tool==='recovery'&&selected?.recovered?<><p className="result-label">Complete PNG</p><dl><dt>Byte offset</dt><dd className="mono">{selected.offset.toLocaleString()}</dd><dt>Original length</dt><dd className="mono">{selected.bytes.length.toLocaleString()} bytes</dd></dl>{candidateInfo?.text&&Object.entries(candidateInfo.text).map(([key,value])=><div className="metadata" key={key}><small>{key}</small><p>{value}</p></div>)}<p className="tiny muted">PNG text fields are self-reported metadata. They do not certify identity.</p></>:tool==='recovery'?<p className="muted">Run a scan to validate and recover PNG candidates.</p>:null}
+        {tool==='recovery'&&selected?.recovered?<><p className="result-label">Complete PNG</p><dl><dt>Byte offset</dt><dd className="mono">{selected.offset.toLocaleString()}</dd><dt>Original length</dt><dd className="mono">{selected.bytes.length.toLocaleString()} bytes</dd></dl>{metadata&&Object.entries(metadata).map(([key,value])=><div className="metadata" key={key}><small>{key}</small><p>{value}</p></div>)}<p className="tiny muted">PNG text fields are self-reported metadata. They do not certify identity.</p></>:tool==='recovery'?<p className="muted">Run a scan to validate and recover PNG candidates.</p>:null}
         {tool==='signal'&&(signal?<><p className="result-label">{signal.found?'Supported payload recovered':'No supported message'}</p><p className="signal-message">{signal.message||signal.status}</p></>:<p className="muted">Choose a scheme and decode. The station uses RGB.</p>)}
         {tool==='compare'&&(comparison?<><p className="result-label">{comparison.identical?'Identical bytes':'Different bytes'}</p><small>Examined SHA-256 / {comparison.sizeA.toLocaleString()} bytes</small><code className="hash">{comparison.hashA}</code><small>Reference SHA-256 / {comparison.sizeB.toLocaleString()} bytes</small><code className="hash">{comparison.hashB}</code><p className="muted">What does this result support about the visitor’s actual claim?</p></>:<p className="muted">SHA-256 is calculated at runtime from both original files.</p>)}
         <div className="result-actions"><button className="full" disabled={!canRecord||busy||recorded} onClick={record}>{recorded?'✓ Finding recorded':'＋ Record finding'}</button>

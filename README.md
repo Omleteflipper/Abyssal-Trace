@@ -2,6 +2,8 @@
 
 A playable initial build of the underwater inspection-survival game in the supplied October 17, 2026 plan. Four arrivals, two views, three real forensic instruments, consequential decisions, two endings, an evidence debrief, a separate Expo Demo, and an independent file workspace.
 
+**Play:** [Abyssal Trace — public judging link](https://abyssal-trace.citrusmule33.chatgpt.site). Anyone with the link can open the game.
+
 **Art status:** provisional original SVG environments, portraits, and title; procedural environmental PNGs and synthesized audio placeholders. This is the initial implementation milestone, not the visually finished submission. Approved final assets, supplied sounds, and actual laptop visual/playthrough rehearsal remain required integration work.
 
 ## Run locally

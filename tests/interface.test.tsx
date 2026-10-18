@@ -10,7 +10,7 @@ import App from '../src/app/App';
 
 vi.mock('../src/audio/mixer',async original=>{
   const source=await original<typeof import('../src/audio/mixer')>();
-  return {...source,audio:{init:vi.fn(),update:vi.fn(),scene:vi.fn(),play:vi.fn(),tone:vi.fn()}};
+  return {...source,audio:{init:vi.fn(),update:vi.fn(),scene:vi.fn(),play:vi.fn(),tone:vi.fn(),startLoop:vi.fn(),stopLoop:vi.fn()}};
 });
 // Browser adapters only: analysis returns the actual pure engine's results on fixture bytes.
 class AnalysisWorker {
@@ -61,6 +61,14 @@ beforeEach(()=>{
 afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();});
 
 describe('connected playable interface with real analysis',()=>{
+  it('retains recovered metadata after reopening and does not mistake Mira’s old image for the repair',async()=>{
+    render(<App/>);await click(/New Shift/);await click(/Start Shift/);await enterExterior('Mira');await receive();await recover('Mira',1);
+    expect(screen.getByText('J4 junction before repair')).toBeTruthy();await closeTool('Recovery Cradle');await enterExterior('Mira');
+    expect(screen.queryByRole('button',{name:/More questions/})).toBeNull();
+    await click(/Return to Office/);await click('Open Recovery Cradle');expect(screen.getByText('J4 junction before repair')).toBeTruthy();
+    await click('Load Mira’s recorder');await click(/Scan recorder/);await user.click(screen.getAllByRole('button',{name:/Candidate/})[1]);await tick();await record();await closeTool('Recovery Cradle');await enterExterior('Mira');await click(/More questions/);
+    expect(screen.getByRole('button',{name:/I recovered the service image./})).toBeTruthy();
+  });
   it('completes the Expo Demo with actual carving, hash match, contradiction and review',async()=>{
     render(<App/>);await click(/Expo Demo/);await enterExterior('Nacre');await receive();await recover('Nacre');
     expect(screen.getByText('Complete PNG')).toBeTruthy();await click('03 / Trace Comparator');await click(/Calculate & compare SHA-256/);await finishAnalysis();

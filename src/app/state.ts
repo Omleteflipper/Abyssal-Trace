@@ -1,6 +1,6 @@
 import type { Decision, Observation, VisitorId } from '../game/content';
 export type Screen = 'menu' | 'briefing' | 'office' | 'exterior' | 'ending' | 'debrief' | 'lab';
-export interface Artifact { id: string; name: string; bytes: Uint8Array; offset: number; caseId: VisitorId | 'lab'; origin: 'story' | 'local' | 'sample'; recovered?: boolean }
+export interface Artifact { id: string; name: string; bytes: Uint8Array; offset: number; caseId: VisitorId | 'lab'; origin: 'story' | 'local' | 'sample'; recovered?: boolean; metadata?: Record<string,string> }
 export interface GameState { screen: Screen; mode: 'full' | 'demo'; index: number; received: VisitorId[]; artifacts: Artifact[]; observations: Observation[]; decisions: Decision[]; asked: string[]; log: string[]; selected: Record<string,string>; started: boolean }
 export const initialState: GameState = { screen:'menu',mode:'full',index:0,received:[],artifacts:[],observations:[],decisions:[],asked:[],log:[],selected:{},started:false };
 type Action = { type:'start'; mode:'full'|'demo' } | { type:'screen'; screen:Screen } | { type:'receive'; id:VisitorId } | {type:'artifacts'; artifacts:Artifact[]} | {type:'observe'; observation:Observation} | {type:'ask'; id:string} | {type:'decide'; decision:Decision} | {type:'next'} | {type:'select'; caseId:string; id:string} | {type:'reset'};

@@ -13,11 +13,12 @@ export const audioManifest = {
   confirm: { category: 'effects', path: null }, admit: { category: 'effects', path: null }, deny: { category: 'effects', path: null }, occupancy: { category: 'effects', path: null }, secure: { category: 'effects', path: null }, failure: { category: 'effects', path: null },
 } satisfies Record<string,{category:Category;path:string|null}>;
 export type AudioEvent = keyof typeof audioManifest;
-const tones: Partial<Record<AudioEvent, number>> = { click:220,arrival:390,recoveryHover:160,signalHover:330,compareHover:250,found:520,record:440,decode:310,comparison:280,confirm:170,admit:110,deny:95,secure:440,failure:75,intake:300,channel:350,notebookOpen:200,back:180 };
+const tones: Partial<Record<AudioEvent, number>> = { click:220,arrival:390,recoveryHover:160,signalHover:330,compareHover:250,found:520,record:440,decode:310,comparison:280,confirm:170,admit:110,deny:95,secure:440,failure:75,intake:300,channel:350,notebookOpen:200,back:180,preview:300 };
 export class Mixer {
   context?: AudioContext; master?: GainNode; gains = {} as Record<Category,GainNode>; settings = defaultSettings;
   sceneNodes: Array<{ source: AudioScheduledSourceNode; gain: GainNode }> = []; lastHover=0; sceneToken=0;
   cache = new Map<string,AudioBuffer | null>(); voiceNode?:AudioBufferSourceNode; voiceToken=0;
+  loops = new Map<AudioEvent,{source:AudioBufferSourceNode;gain:GainNode}>(); loopTokens=new Map<AudioEvent,number>();
   init() {
     try {
       if(!this.context) {
@@ -41,10 +42,11 @@ export class Mixer {
     try { const response=await fetch(import.meta.env.BASE_URL+path);if(!response.ok)throw new Error();const buffer=await this.context!.decodeAudioData(await response.arrayBuffer());this.cache.set(path,buffer);return buffer; }
     catch { this.cache.set(path,null);return null; }
   }
-  async play(event: AudioEvent) {
+  async play(event: AudioEvent, categoryOverride?:Category) {
     if(!this.context)return;
     if(/Hover|hover/.test(event)) { if(performance.now()-this.lastHover<180)return;this.lastHover=performance.now(); }
-    const entry=audioManifest[event] as {category:Category;path:string|null};
+    const definition=audioManifest[event] as {category:Category;path:string|null};
+    const entry={...definition,category:categoryOverride??definition.category};
     const voice=entry.category==='voice',voiceToken=voice?++this.voiceToken:0;
     if(voice&&this.voiceNode){this.voiceNode.stop();this.voiceNode=undefined;}
     if(entry.path) {
@@ -63,9 +65,25 @@ export class Mixer {
     o.type='sine';o.frequency.setValueAtTime(frequency,t);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.09,t+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t+duration);
     o.connect(g);g.connect(this.gains[category]);o.start(t);o.stop(t+duration+0.03);o.onended=()=>{o.disconnect();g.disconnect();};
   }
+  stopLoop(event:AudioEvent) {
+    this.loopTokens.set(event,(this.loopTokens.get(event)??0)+1);
+    const loop=this.loops.get(event);if(!loop||!this.context)return;
+    loop.gain.gain.setTargetAtTime(0,this.context.currentTime,0.04);loop.source.stop(this.context.currentTime+0.2);this.loops.delete(event);
+  }
+  async startLoop(event:AudioEvent) {
+    this.stopLoop(event);
+    const entry=audioManifest[event] as {category:Category;path:string|null};
+    if(!this.context||!entry.path)return;
+    const token=this.loopTokens.get(event),buffer=await this.buffer(entry.path);
+    if(!buffer||token!==this.loopTokens.get(event))return;
+    const source=this.context.createBufferSource(),gain=this.context.createGain();
+    source.buffer=buffer;source.loop=true;gain.gain.value=event==='music'?0.3:0.5;source.connect(gain);gain.connect(this.gains[entry.category]);source.start();
+    source.onended=()=>{source.disconnect();gain.disconnect();};this.loops.set(event,{source,gain});
+  }
   async scene(scene:'office'|'exterior'|null) {
     const token=++this.sceneToken;
     this.voiceToken++;if(this.voiceNode){this.voiceNode.stop();this.voiceNode=undefined;}
+    if(scene)void this.startLoop('music');else this.stopLoop('music');
     if(!this.context)return;
     const ctx=this.context;
     for(const {source,gain} of this.sceneNodes) { gain.gain.setTargetAtTime(0,ctx.currentTime,0.06);source.stop(ctx.currentTime+0.25); }
