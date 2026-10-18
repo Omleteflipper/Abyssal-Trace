@@ -41,10 +41,9 @@ const finishAnalysis=async()=>{
 const closeTool=async(name:string)=>click(`Close ${name}`);
 const enterExterior=async(name:string)=>click(`Open airlock view — speak to ${name}`);
 const receive=async()=>click('↓ Receive recorder through intake');
-const record=async()=>click('＋ Record finding');
-const recover=async(name:string,candidate=1)=>{
-  await click(/Return to Office/);await click('Open Recovery Cradle');await click(`Load ${name}’s recorder`);await click(/Scan recorder/);
-  const buttons=screen.getAllByRole('button',{name:/Candidate/});await user.click(buttons[candidate-1]);await tick();await record();
+const recover=async(_name:string,candidate=1)=>{
+  await click(/Return to Office/);await click('Open Recovery Cradle');await click('Recover');
+  const buttons=screen.getAllByRole('button',{name:/^Image [12]$/});await user.click(buttons[candidate-1]);await tick();
 };
 beforeEach(()=>{
   vi.useFakeTimers();vi.stubGlobal('crypto',webcrypto);vi.stubGlobal('Worker',AnalysisWorker);vi.stubGlobal('Blob',NodeBlob);
@@ -63,16 +62,16 @@ afterEach(()=>{cleanup();vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllM
 describe('connected playable interface with real analysis',()=>{
   it('retains recovered metadata after reopening and does not mistake Mira’s old image for the repair',async()=>{
     render(<App/>);await click(/New Shift/);await click(/Start Shift/);await enterExterior('Mira');await receive();await recover('Mira',1);
-    expect(screen.getByText('J4 junction before repair')).toBeTruthy();await closeTool('Recovery Cradle');await enterExterior('Mira');
+    expect(screen.getByText(/J4 junction before repair/)).toBeTruthy();await closeTool('Recovery Cradle');await enterExterior('Mira');
     expect(screen.queryByRole('button',{name:/More questions/})).toBeNull();
-    await click(/Return to Office/);await click('Open Recovery Cradle');expect(screen.getByText('J4 junction before repair')).toBeTruthy();
-    await click('Load Mira’s recorder');await click(/Scan recorder/);await user.click(screen.getAllByRole('button',{name:/Candidate/})[1]);await tick();await record();await closeTool('Recovery Cradle');await enterExterior('Mira');await click(/More questions/);
+    await click(/Return to Office/);await click('Open Recovery Cradle');expect(screen.getByText(/J4 junction before repair/)).toBeTruthy();
+    await user.click(screen.getAllByRole('button',{name:/^Image [12]$/})[1]);await tick();await closeTool('Recovery Cradle');await enterExterior('Mira');await click(/More questions/);
     expect(screen.getByRole('button',{name:/I recovered the service image./})).toBeTruthy();
   });
   it('completes the Expo Demo with actual carving, hash match, contradiction and review',async()=>{
     render(<App/>);await click(/Expo Demo/);await enterExterior('Nacre');await receive();await recover('Nacre');
-    expect(screen.getByText('Complete PNG')).toBeTruthy();await click('03 / Trace Comparator');await click(/Calculate & compare SHA-256/);await finishAnalysis();
-    expect(screen.getByText('Identical bytes')).toBeTruthy();expect(screen.getByText(/Camera C7 physically disconnected/)).toBeTruthy();await record();await closeTool('Trace Comparator');await enterExterior('Nacre');await click(/More questions/);
+    expect(screen.getByText('1 image recovered')).toBeTruthy();await click('Trace Comparator');await click('Compare');await finishAnalysis();
+    expect(screen.getByText('Same file')).toBeTruthy();expect(screen.getByText(/Camera C7 was disconnected/)).toBeTruthy();await closeTool('Trace Comparator');await enterExterior('Nacre');await click(/More questions/);
     await click(/The archive matches. C7 was disconnected./);expect(screen.getByRole('button',{name:/Open. The. Lock./})).toBeTruthy();
     await click(/^Deny/);await click('Confirm denial →');expect(screen.getByRole('heading',{name:'Nacre denied.'})).toBeTruthy();await tick(3000);
     expect(screen.getByRole('heading',{name:'Encounter Review'})).toBeTruthy();expect(screen.getByText(/Story truth: Echo/)).toBeTruthy();expect(screen.getByRole('button',{name:/Begin the full four-arrival shift/})).toBeTruthy();
@@ -81,8 +80,8 @@ describe('connected playable interface with real analysis',()=>{
     render(<App/>);await click(/New Shift/);await click(/Start Shift/);
     for(const [i,name] of ['Mira','Vela','Rook','Nacre'].entries()) {
       await enterExterior(name);await receive();await recover(name,name==='Mira'?2:1);
-      if(name==='Vela') {await click('02 / Signal Scope');await click(/Decode RGB signal/);expect(screen.getByText(/P2 FLOODING. 22:06./)).toBeTruthy();await record();await closeTool('Signal Scope');}
-      else {await click('03 / Trace Comparator');if(name==='Mira')await user.selectOptions(screen.getByLabelText('Reference archive'),'j4');await click(/Calculate & compare SHA-256/);await finishAnalysis();expect(screen.getByText(name==='Mira'?'Different bytes':'Identical bytes')).toBeTruthy();await record();await closeTool('Trace Comparator');}
+      if(name==='Vela') {await click('Signal Scope');await click('Tune signal');expect(screen.getByText(/P2 FLOODING. 22:06./)).toBeTruthy();await closeTool('Signal Scope');await click('Open Signal Scope');expect(screen.getByText(/P2 FLOODING. 22:06./)).toBeTruthy();await closeTool('Signal Scope');await enterExterior('Vela');await click(/More questions/);expect(screen.getByRole('button',{name:/I read the hidden report/})).toBeTruthy();await click(/Return to Office/);}
+      else {await click('Trace Comparator');await click('Compare');await finishAnalysis();expect(screen.getByText(name==='Mira'?'Different files':'Same file')).toBeTruthy();await closeTool('Trace Comparator');}
       await enterExterior(name);await click(i===3?/^Deny/:/^Admit/);await click(i===3?'Confirm denial →':'Confirm admission →');await tick(3000);
     }
     expect(screen.getByRole('heading',{name:'Secure Until Dawn.'})).toBeTruthy();await click(/Review the evidence/);expect(screen.getAllByText(/Story truth: Genuine/)).toHaveLength(3);
@@ -92,13 +91,14 @@ describe('connected playable interface with real analysis',()=>{
     for(const name of ['Mira','Vela','Rook','Nacre']){await enterExterior(name);await click(/^Admit/);await click('Confirm admission →');await tick(3000);}
     expect(screen.getByRole('heading',{name:'The Refuge Falls.'})).toBeTruthy();expect(screen.getByText(/Someone inside repeats the alarm/)).toBeTruthy();
   });
-  it('uploads and exports original bytes and keeps unsupported results honest',async()=>{
-    render(<App/>);await click(/Open Instruments/);await click(/INSTRUMENT 01/);
-    const source=new Uint8Array(readFileSync('public/evidence/vela.bin'));
-    const file=new File([source],'local-dive.bin',{type:'application/octet-stream'});Object.defineProperty(file,'arrayBuffer',{value:async()=>source.buffer});
-    await user.upload(screen.getByLabelText('Upload binary'),file);await tick();await click(/Scan recorder/);expect(screen.getByText('Complete PNG')).toBeTruthy();
-    await click(/Export original PNG/);const exported=new Uint8Array(await blobs.at(-1)!.arrayBuffer());expect(exported).toEqual(carvePng(source)[0].bytes);
-    await click('02 / Signal Scope');await click(/Decode RGB signal/);expect(screen.getByText(/P2 FLOODING. 22:06./)).toBeTruthy();await click(/^R$/);await click(/Decode R signal/);expect(screen.getByText('No supported message')).toBeTruthy();
+  it('offers a spoiler-free guide and real neutral practice without file controls',async()=>{
+    render(<App/>);await click(/Instrument Guide/);
+    expect(screen.queryByText(/Vela|Nacre|C7-004/)).toBeNull();
+    await click('Try Signal Scope');await tick();await click('Tune signal');
+    expect(screen.getByText('TRAINING CHANNEL CLEAR. REPORT RECEIVED.')).toBeTruthy();
+    expect(within(screen.getByRole('dialog')).queryByRole('button',{name:/Record finding|Export|Upload|notebook/i})).toBeNull();
+    await closeTool('Signal Scope');await click('Try Signal Scope');
+    expect(screen.getByText('TRAINING CHANNEL CLEAR. REPORT RECEIVED.')).toBeTruthy();
   });
   it('supports keyboard settings, immediate sliders, canceling decisions and fresh resets',async()=>{
     render(<App/>);await click('Open settings');const dialog=screen.getByRole('dialog',{name:'Station settings'});

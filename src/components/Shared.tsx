@@ -21,7 +21,7 @@ export function Modal({ title, eyebrow, children, onClose, wide = false }: { tit
     return()=>{element?.removeEventListener('keydown',handler);if(previous?.isConnected)previous.focus();};
   },[]);
   return <div className="modal-backdrop"><section ref={ref} className={`modal ${wide?'modal-wide':''}`} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
-    <header className="modal-header"><div><span className="eyebrow">{eyebrow??'PELAGIC-9 / OPERATOR TERMINAL'}</span><h2>{title}</h2></div><button className="icon-button" aria-label={`Close ${title}`} onClick={()=>closeRef.current()}>✕</button></header>
+    <header className="modal-header"><div>{eyebrow!==''&&<span className="eyebrow">{eyebrow??'PELAGIC-9 / OPERATOR TERMINAL'}</span>}<h2>{title}</h2></div><button className="icon-button" aria-label={`Close ${title}`} onClick={()=>closeRef.current()}>✕</button></header>
     {children}
   </section></div>;
 }
@@ -30,8 +30,10 @@ export function SafeImage({path,alt,className,style}:{path:string;alt:string;cla
   useEffect(()=>setFailed(false),[path]);
   return failed?<div className={`asset-fallback ${className??''}`} style={style}>{alt}</div>:<img className={className} style={style} src={assetUrl(path)} alt={alt} onError={()=>setFailed(true)}/>;
 }
-export function Dialogue({text,instant}:{text:string;instant:boolean}) {
+export function Dialogue({text,instant,onComplete}:{text:string;instant:boolean;onComplete?:()=>void}) {
   const [visible,setVisible]=useState(instant?text.length:0);
+  const completed=useRef(false),completeRef=useRef(onComplete);completeRef.current=onComplete;
+  useEffect(()=>{if(visible===text.length&&!completed.current){completed.current=true;completeRef.current?.();}},[visible,text]);
   useEffect(()=>{
     setVisible(instant?text.length:0);
     if(instant)return;
@@ -41,7 +43,7 @@ export function Dialogue({text,instant}:{text:string;instant:boolean}) {
   return <button className="dialogue-text" onClick={()=>setVisible(text.length)} aria-label={text} title="Click to reveal the whole transmission"><span aria-hidden="true">“{text.slice(0,visible)}{visible===text.length?'”':'▎'}</span></button>;
 }
 export function SettingsPanel({settings,onChange,onClose}:{settings:Settings;onChange:(s:Settings)=>void;onClose:()=>void}) {
-  return <Modal title="Station settings" onClose={onClose}>
+  return <Modal title="Station settings" eyebrow="" onClose={onClose}>
     <div className="modal-body settings-body">
       <p className="muted">Apply immediately. Settings reset when the page reloads.</p>
       {(['master','ambience','effects','voice'] as const).map(key=><div className="setting" key={key}>

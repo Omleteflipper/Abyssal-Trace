@@ -1,132 +1,142 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Artifact } from '../app/state';
+import type { Artifact, InstrumentResult } from '../app/state';
 import { archives, encounters, records, toolInfo, type Observation, type ToolId, type VisitorId } from '../game/content';
-import { analyze, download, fetchBytes, readLocal } from '../tools/client';
-import type { Candidate, Scheme, compareHashes, decodePng, decodeStationLsb } from '../tools/forensics';
+import { analyze, fetchBytes } from '../tools/client';
+import type { Candidate, compareHashes, decodeStationLsb } from '../tools/forensics';
 import { audio } from '../audio/mixer';
-import { Modal } from './Shared';
+import { Modal, SafeImage } from './Shared';
 
-type Comparison=Awaited<ReturnType<typeof compareHashes>>;
-type Signal=ReturnType<typeof decodeStationLsb>;
 function Preview({bytes}:{bytes:Uint8Array}) {
   const [url,setUrl]=useState('');
   useEffect(()=>{const object=URL.createObjectURL(new Blob([new Uint8Array(bytes)],{type:'image/png'}));setUrl(object);return()=>URL.revokeObjectURL(object);},[bytes]);
-  return <img className="evidence-preview" src={url||undefined} alt="Recovered image, decoded from the selected file bytes"/>;
+  return <img className="evidence-preview" src={url||undefined} alt="Recovered recorder image"/>;
 }
-function PixelView({bytes,scheme,lowest}:{bytes:Uint8Array;scheme:Scheme;lowest:boolean}) {
-  const canvas=useRef<HTMLCanvasElement>(null);const [error,setError]=useState('');
-  useEffect(()=>{
-    let cancelled=false;setError('');
-    analyze<ReturnType<typeof decodePng>>('pixels',bytes).then(png=>{
-      if(cancelled||!canvas.current)return;
-      const ctx=canvas.current.getContext('2d');if(!ctx)return;
-      canvas.current.width=png.width;canvas.current.height=png.height;
-      const rgba=new Uint8ClampedArray(png.width*png.height*4);
-      for(let i=0;i<png.width*png.height;i++){
-        for(let c=0;c<3;c++){const v=png.data[i*png.channels+c];rgba[i*4+c]=scheme==='RGB'||c==={R:0,G:1,B:2}[scheme]?lowest?(v&1)*255:v:0;}
-        rgba[i*4+3]=255;
-      }
-      ctx.putImageData(new ImageData(rgba,png.width,png.height),0,0);
-    }).catch(e=>{if(!cancelled)setError(e.message);});
-    return()=>{cancelled=true;};
-  },[bytes,scheme,lowest]);
-  return <>{error?<p className="status error">{error}</p>:<canvas ref={canvas} className="evidence-preview pixel-view" aria-label={`${scheme} ${lowest?'lowest-bit':'normal'} image view`}/>}</>;
+const label=(file:Artifact)=>file.metadata?.Scene??'Recovered image';
+const instructions:Record<ToolId,string>={
+  recovery:'A recorder can lose its file list while the image data remains. This instrument searches for recognizable PNG file boundaries.',
+  signal:'Steganography hides information inside ordinary files. This instrument reads messages stored in the smallest bits of image colors.',
+  compare:'A hash is a fingerprint calculated from a file’s bytes. Comparing hashes helps identify an exact copy.',
+};
+const noMessage='No message found using the station’s supported encoding.';
+function HowItWorks({tool}:{tool:ToolId}) {
+  return <details className="tool-learning"><summary>How does it work?</summary>
+    {tool==='recovery'?<p>The tool locates a PNG signature, checks the file’s structure, and extracts an intact embedded image. It cannot recreate missing image data.</p>:tool==='signal'?<>
+      <p className="bit-example">Example: <code>1001011<mark>0</mark> → 1001011<mark>1</mark></code></p>
+      <div className="color-bit-labels" aria-label="Red, green, and blue color channels"><span>R</span><span>G</span><span>B</span></div>
+      <p>Changing the highlighted lowest bit changes a color value by only one while storing one message bit. Many such bits form text. Hiding information is different from encrypting it.</p>
+    </>:<p>The same file produces the same hash; changing its bytes changes the hash. A match supports identical file content, not the visitor’s identity. Different hashes do not necessarily mean the pictures look different.</p>}
+  </details>;
 }
-interface Props { tool:ToolId;caseId:VisitorId|'lab';received:boolean;artifacts:Artifact[];selectedId?:string;onSelect:(id:string)=>void;onArtifacts:(a:Artifact[])=>void;onObservation:(o:Observation)=>void;onClose:()=>void;onNotebook:()=>void;onTool:(tool:ToolId)=>void }
-export function Instruments(props:Props) {
-  const {tool,caseId,received,artifacts,selectedId,onSelect,onArtifacts,onObservation,onClose,onNotebook,onTool}=props;
-  const info=toolInfo[tool];const current=encounters.find(c=>c.id===caseId);
-  const [module,setModule]=useState<{name:string;bytes:Uint8Array;origin:Artifact['origin']}|null>(null);
-  const [candidates,setCandidates]=useState<Candidate[]>([]),[status,setStatus]=useState('Choose a source to begin.'),[busy,setBusy]=useState(false);
-  const [scheme,setScheme]=useState<Scheme>('RGB'),[lowest,setLowest]=useState(false),[signal,setSignal]=useState<Signal|null>(null);
-  const [reference,setReference]=useState(archives[0].id),[customRef,setCustomRef]=useState<{name:string;bytes:Uint8Array}|null>(null),[comparison,setComparison]=useState<Comparison|null>(null);
-  const [recorded,setRecorded]=useState(false);
-  const selected=artifacts.find(a=>a.id===selectedId)??artifacts[0];
-  const live=useRef(true);useEffect(()=>{live.current=true;return()=>{live.current=false;audio.stopLoop('working');};},[]);
-  useEffect(()=>{setComparison(null);setSignal(null);setRecorded(false);setStatus('Ready. Analysis runs on the selected bytes.');},[selected?.id,scheme,reference,customRef]);
-  const run=async(action:()=>Promise<void>)=>{setBusy(true);setRecorded(false);void audio.startLoop('working');try{await action();}catch(e){if(live.current){setStatus(e instanceof Error?e.message:'Analysis failed.');void audio.play('error');}}finally{audio.stopLoop('working');if(live.current)setBusy(false);}};
-  const loadModule=async(id:string)=>run(async()=>{const bytes=await fetchBytes(`evidence/${id}.bin`);if(!live.current)return;setModule({name:`${id}.bin`,bytes,origin:caseId==='lab'?'sample':'story'});setCandidates([]);setStatus('Recorder loaded. Scan to locate complete PNG candidates.');});
-  const upload=async(file:File|undefined,referenceSlot=false)=>{if(!file)return;await run(async()=>{
-    const bytes=await readLocal(file);if(!live.current)return;
-    if(referenceSlot){setCustomRef({name:file.name,bytes});setStatus('Local reference loaded.');return;}
-    if(tool==='recovery'){setModule({name:file.name,bytes,origin:'local'});setCandidates([]);setStatus('Local binary loaded. Ready to scan.');}
-    else {if(tool==='signal')await analyze('pixels',bytes);if(!live.current)return;const id=`local-${crypto.randomUUID()}`;onArtifacts([{id,name:file.name,bytes,offset:0,caseId,origin:'local'}]);onSelect(id);setStatus('Local file loaded.');}
-  });};
-  const sample=async(path:string)=>run(async()=>{const bytes=await fetchBytes(`evidence/${path}`);if(!live.current)return;const id=`sample-${path}`;onArtifacts([{id,name:path,bytes,offset:0,caseId,origin:'sample'}]);onSelect(id);});
-  const scan=()=>run(async()=>{
-    if(!module)return;void audio.play('scan');setStatus('Scanning signatures and validating chunk boundaries + CRCs…');
-    const result=await analyze<Candidate[]>('scan',module.bytes);if(!live.current)return;setCandidates(result);
-    const recovered:Artifact[]=result.filter(c=>c.valid&&c.bytes).map(c=>({id:`${caseId}-${module.name}-${c.offset}-${c.length}`,name:`${module.name.replace(/\.[^.]+$/,'')}-${c.offset}.png`,bytes:c.bytes!,offset:c.offset,caseId,origin:module.origin,recovered:true,metadata:c.text}));
-    onArtifacts(recovered);if(recovered.length)onSelect(recovered[0].id);
-    setStatus(result.length?`${recovered.length} complete PNG${recovered.length===1?'':'s'} recovered · ${result.length-recovered.length} rejected candidate${result.length-recovered.length===1?'':'s'}.`:'No PNG signatures found in this input.');void audio.play(recovered.length?'found':'empty');
-  });
-  const doSignal=()=>run(async()=>{if(!selected)return;const result=await analyze<Signal>('signal',selected.bytes,{scheme});if(!live.current)return;setSignal(result);setStatus(result.status);void audio.play(result.found?'decode':'empty');});
-  const doCompare=()=>run(async()=>{if(!selected)return;const ref=customRef?.bytes??await fetchBytes(archives.find(a=>a.id===reference)!.path);const result=await analyze<Comparison>('compare',selected.bytes,{reference:ref});if(!live.current)return;setComparison(result);setStatus(result.identical?'Identical bytes. Interpret the match in the context of the claim.':'Different bytes. This alone does not show a different visual scene.');void audio.play('comparison');});
-  const record=()=>{
-    if(!selected)return;
-    let text='',unlock=selected.origin==='story';
-    if(tool==='recovery'){
-      text=`Recovered ${selected.name}: complete PNG at byte ${selected.offset.toLocaleString()}, ${selected.bytes.length.toLocaleString()} bytes; chunk CRCs verified.`;
-      if(caseId==='mira')unlock=unlock&&selected.metadata?.Scene==='J4 service image / copper bridge fitted';
-    }
-    if(tool==='signal'&&signal){text=signal.found?`Decoded ${scheme} P9LSB1 payload from ${selected.name}: “${signal.message}”`:signal.status;unlock=unlock&&signal.found;}
-    if(tool==='compare'&&comparison){text=`${selected.name} and ${customRef?.name??archives.find(a=>a.id===reference)!.label}: ${comparison.identical?'identical bytes':'different bytes'} (SHA-256). Examined digest: ${comparison.hashA}.`;unlock=unlock&&!customRef&&(caseId==='mira'?reference==='j4'&&!comparison.identical:reference==='c7'&&comparison.identical);}
-    onObservation({id:`${caseId}-${tool}-${selected.id}-${tool==='signal'?scheme:tool==='compare'?customRef?.name??reference:''}`,caseId,kind:tool,text,fileName:selected.name,fingerprint:comparison?.hashA,unlock});setRecorded(true);void audio.play('record');
+const factText:Record<VisitorId,string>={
+  mira:'J4’s broken lower cable needed a copper-colored bridge. The old archive shows no bridge. Mira was assigned to the repair.',
+  vela:'The P2 alarm reported rising water at 22:06. The open communications channel was compromised.',
+  rook:'C7-004 was kept for bypass repairs. Salvage technicians may carry unchanged backup copies.',
+  nacre:'Camera C7 was disconnected at 21:40 today. Its power and recording lines were removed.',
+};
+interface Props {
+  visitorName?:string;tool:ToolId;caseId:VisitorId|'lab';received:boolean;artifacts:Artifact[];selectedId?:string;
+  results:Record<string,InstrumentResult>;onResult:(key:string,result:InstrumentResult)=>void;
+  onSelect:(id:string)=>void;onArtifacts:(a:Artifact[])=>void;onObservation:(o:Observation)=>void;
+  onClose:()=>void;onTool:(tool:ToolId)=>void;onReturnVisitor:()=>void;
+}
+export function Instruments({tool,visitorName,caseId,received,artifacts,selectedId,results,onResult,onSelect,onArtifacts,onObservation,onClose,onTool,onReturnVisitor}:Props) {
+  const practice=caseId==='lab',current=encounters.find(c=>c.id===caseId);
+  const images=artifacts.filter(a=>a.recovered);
+  const selected=images.find(a=>a.id===selectedId)??images[0];
+  const [busy,setBusy]=useState(false),[error,setError]=useState('');
+  const active=useRef(false),mounted=useRef(true);
+  const record=records.find(r=>r.id===current?.recordId);
+  const reference=practice?{id:'practice',label:'Training archive',path:'evidence/practice-archive.png',receipt:'Stored before this exercise'}:caseId==='vela'?null:archives.find(a=>a.id===(caseId==='mira'?'j4':'c7'))!;
+  const resultKey=(kind:ToolId,file=selected)=>`${caseId}:${kind}${kind==='recovery'?'':`:${file?.id??''}`}`;
+  const result=results[resultKey(tool)],recovery=results[resultKey('recovery')];
+  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;audio.stopLoop('working');};},[]);
+  const observeRecovery=(file:Artifact)=>onObservation({id:`${caseId}-recovery-${file.id}`,caseId,kind:'recovery',fileName:file.name,
+    text:`Recovered image: ${label(file)}.`,unlock:file.origin==='story'&&(caseId!=='mira'||file.metadata?.Scene==='J4 service image / copper bridge fitted')});
+  const choose=(file:Artifact)=>{onSelect(file.id);setError('');if(tool==='recovery')observeRecovery(file);};
+  const run=async(action:()=>Promise<void>)=>{
+    if(active.current)return;active.current=true;setBusy(true);setError('');void audio.startLoop('working');
+    try{await action();}catch(e){if(mounted.current){setError(e instanceof Error?e.message:'The instrument could not finish. Try again.');void audio.play('error');}}
+    finally{active.current=false;audio.stopLoop('working');if(mounted.current)setBusy(false);}
   };
-  const metadata=selected?.metadata;
-  const canRecord=!!selected&&(tool==='recovery'?!!selected.recovered:tool==='signal'?!!signal:!!comparison);
-  return <Modal title={info.title} eyebrow={`INSTRUMENT ${info.number} / ${current?`${current.name.toUpperCase()} CASE`:'INDEPENDENT WORKSPACE'}`} onClose={onClose} wide>
-    <nav className="tool-tabs" aria-label="Instruments">{(Object.keys(toolInfo) as ToolId[]).map(t=><button key={t} disabled={busy} aria-current={t===tool?'page':undefined} onClick={()=>onTool(t)}>{toolInfo[t].number} / {toolInfo[t].title}</button>)}</nav>
-    <div className="instrument-grid">
-      <aside className="instrument-source">
-        <span className="eyebrow">{tool==='recovery'?'01 / SOURCE':'01 / EXAMINED FILE'}</span>
+  const recover=()=>run(async()=>{
+    const bytes=await fetchBytes(`evidence/${practice?'practice':caseId}.bin`);
+    const candidates=await analyze<Candidate[]>('scan',bytes);
+    const files:Artifact[]=candidates.filter(c=>c.valid&&c.bytes).map(c=>({id:`${caseId}-recorder-${c.offset}`,name:`${practice?'practice':caseId}-${c.offset}.png`,bytes:c.bytes!,offset:c.offset,caseId,origin:practice?'sample':'story',recovered:true,metadata:c.text}));
+    // Case state outlives the panel; closing during analysis does not discard a result.
+    onArtifacts(files);onResult(resultKey('recovery'),{kind:'recovery',count:files.length,rejected:candidates.length-files.length});
+    if(files.length){const first=files.find(f=>f.id===selectedId)??files[0];onSelect(first.id);observeRecovery(first);}
+    if(mounted.current)void audio.play(files.length?'found':'empty');
+  });
+  // Guide practice prepares its image using the same real recovery worker.
+  useEffect(()=>{if(practice&&tool!=='recovery'&&!images.length)void recover();},[]);
+  const tune=()=>run(async()=>{
+    if(!selected)return;
+    const decoded=await analyze<ReturnType<typeof decodeStationLsb>>('signal',selected.bytes,{scheme:'RGB'});
+    const message=decoded.found?decoded.message:noMessage;
+    onResult(resultKey('signal'),{kind:'signal',found:decoded.found,message});
+    onObservation({id:`${caseId}-signal-${selected.id}`,caseId,kind:'signal',fileName:selected.name,text:message,unlock:selected.origin==='story'&&decoded.found});
+    if(mounted.current)void audio.play(decoded.found?'decode':'empty');
+  });
+  const compare=()=>run(async()=>{
+    if(!selected||!reference)return;
+    const compared=await analyze<Awaited<ReturnType<typeof compareHashes>>>('compare',selected.bytes,{reference:await fetchBytes(reference.path)});
+    onResult(resultKey('compare'),{kind:'compare',identical:compared.identical,referenceId:reference.id});
+    onObservation({id:`${caseId}-compare-${selected.id}`,caseId,kind:'compare',fileName:selected.name,fingerprint:compared.hashA,
+      text:`${label(selected)} and ${reference.label}: ${compared.identical?'same file':'different files'}. Archive received ${reference.receipt}.`,
+      unlock:selected.origin==='story'&&(caseId==='mira'?!compared.identical:compared.identical)});
+    if(mounted.current)void audio.play('comparison');
+  });
+  const showFact=!!result&&tool!=='recovery';
+  let interpretation='';
+  if(result?.kind==='signal'&&result.found) {
+    interpretation=caseId==='vela'&&selected?.origin==='story'&&result.message.includes('P2')&&result.message.includes('22:06')
+      ?'The hidden message names pump P2 and 22:06. Compare that with the station alarm.'
+      :'A message was recovered from this image. Consider what it says alongside the available records.';
+  }
+  if(result?.kind==='compare') {
+    if(selected?.origin==='story'&&result.referenceId==='c7'&&result.identical&&caseId==='rook')interpretation='This matches the archive copy Rook described as an old backup, consistent with the repair record.';
+    else if(selected?.origin==='story'&&result.referenceId==='c7'&&result.identical&&caseId==='nacre')interpretation='Nacre described a new recording, but this file matches the older archive. Compare that claim with the camera’s disconnection time.';
+    else if(selected?.origin==='story'&&caseId==='mira'&&result.referenceId==='j4')interpretation=result.identical?'This is the same file as the old junction archive. Check the other recovered image against the repair Mira described.':'This file differs from the old junction archive. Compare the visible repair with Mira’s account and the maintenance notice.';
+    else interpretation=result.identical?'The files match exactly. What that supports depends on the claim being made.':'The files differ in their bytes. Their pictures may still look alike.';
+  }
+  return <Modal title={toolInfo[tool].title} eyebrow="" onClose={onClose} wide>
+    <nav className="tool-tabs" aria-label="Instruments">{(Object.keys(toolInfo) as ToolId[]).map(id=><button key={id} disabled={busy} aria-current={tool===id?'page':undefined} onClick={()=>onTool(id)}>{toolInfo[id].title}</button>)}</nav>
+    {!practice&&!received?<div className="simple-tool-empty"><p>Return to {visitorName??current?.name} at the airlock and receive their recorder.</p><button className="primary" onClick={onReturnVisitor}>Return to visitor →</button></div>:<div className={`simple-tool tool-${tool}`} aria-busy={busy}>
+      <div className="machine-console">
+        <p className="tool-instruction">{instructions[tool]}</p>
+        <HowItWorks tool={tool}/>
         {tool==='recovery'?<>
-          <h3>Recorder input</h3><p className="muted">Recover complete PNGs from a raw recorder dump.</p>
-          {current?<button className="full" disabled={!received||busy} onClick={()=>loadModule(current.id)}>{received?`Load ${current.name}’s recorder`:'Receive recorder outside first'}</button>:<label>Bundled recorder<select defaultValue="" disabled={busy} onChange={e=>{if(e.target.value)void loadModule(e.target.value);}}><option value="" disabled>Choose sample…</option>{encounters.map(c=><option key={c.id} value={c.id}>{c.name} / {c.id}.bin</option>)}</select></label>}
-          {module&&<div className="file-card"><span className="file-icon">▤</span><strong>{module.name}</strong><small>{module.bytes.length.toLocaleString()} bytes</small><div className="byte-map" aria-label="Sample byte map">{Array.from(module.bytes.slice(0,96)).map((b,i)=><i key={i} style={{opacity:0.15+b/300}}/>)}</div></div>}
-          <button className="primary full" disabled={!module||busy} onClick={scan}>{busy?'Scanning…':'Scan recorder'} <span>→</span></button>
+          <div className={`recorder-dock ${busy?'working':''}`} aria-label={`${practice?'Practice':current?.name+'’s'} recorder docked`}>
+            <svg viewBox="0 0 320 150" aria-hidden="true"><rect x="15" y="104" width="290" height="30" rx="5"/><path d="M40 104V40l12-15h216l12 15v64"/><rect x="73" y="48" width="174" height="36" rx="3"/><path d="M85 60h90m-90 11h130M47 118h226"/><circle cx="260" cy="65" r="5"/></svg>
+            <span>{practice?'Practice recorder':`${current?.name}’s recorder`}</span><i className="scan-light"/>
+          </div>
+          <button className="primary machine-action" disabled={busy} onClick={()=>void recover()}>{busy?'Recovering…':'Recover'}</button>
         </>:<>
-          <h3>Selected evidence</h3><label className="sr-only" htmlFor="selected-file">Examined file</label><select id="selected-file" disabled={busy} value={selected?.id??''} onChange={e=>onSelect(e.target.value)}><option value="" disabled>No recovered files</option>{artifacts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select>
-          {selected&&<div className="file-card"><span className="file-icon">▤</span><strong>{selected.name}</strong><small>{selected.bytes.length.toLocaleString()} original bytes</small>{tool==='signal'&&<Preview bytes={selected.bytes}/>}</div>}
-          {!selected&&<p className="muted">Use Recovery Cradle first, or load a local file below.</p>}
-          {caseId==='lab'&&<><button className="full small" disabled={busy} onClick={()=>sample('sample-signal.png')}>Load encoded PNG sample</button><button className="full small" disabled={busy} onClick={()=>sample('sample-empty.png')}>Load empty PNG sample</button></>}
+          {selected?<div className={`image-monitor ${busy?'working':''}`}><Preview bytes={selected.bytes}/><i className="signal-pulse" aria-hidden="true"/></div>:<div className="machine-empty"><p>{busy?'Preparing the practice image…':'Recover a picture from the recorder first.'}</p>{!busy&&<button onClick={()=>onTool('recovery')}>Open Recovery Cradle</button>}</div>}
+          {selected&&images.length>1&&<div className="image-choices" aria-label="Recovered images">{images.map((f,i)=><button key={f.id} aria-pressed={f.id===selected.id} disabled={busy} onClick={()=>choose(f)}>Image {i+1}</button>)}</div>}
+          {tool==='compare'&&selected&&(reference?<figure className="archive-card"><SafeImage path={reference.path} alt="Station archive image"/><figcaption><strong>{reference.label}</strong><span>{practice?reference.receipt:`Received ${reference.receipt}`}</span></figcaption></figure>:<p>No station archive image is available for this location. Try the Signal Scope.</p>)}
+          {selected&&(tool==='signal'||reference)&&<button className="primary machine-action" disabled={busy} onClick={()=>void (tool==='signal'?tune():compare())}>{busy?(tool==='signal'?'Tuning…':'Comparing…'):tool==='signal'?'Tune signal':'Compare'}</button>}
+          {selected&&tool==='compare'&&!reference&&<button onClick={()=>onTool('signal')}>Open Signal Scope</button>}
         </>}
-        <label className={`upload-button ${busy?'disabled':''}`}>↑ Load local {tool==='recovery'?'binary':tool==='signal'?'PNG':'file'}<input aria-label={`Upload ${tool==='recovery'?'binary':tool==='signal'?'PNG':'examined file'}`} type="file" disabled={busy} accept={tool==='signal'?'.png,image/png':undefined} onChange={e=>{void upload(e.target.files?.[0]);e.target.value='';}}/></label>
-        <p className="tiny muted">Files stay in this browser. 8 MB maximum. PNG analysis: 8-bit RGB/RGBA, non-interlaced, up to 4 million pixels.</p>
-      </aside>
-      <section className="instrument-main">
-        <span className="eyebrow">{tool==='recovery'?'02 / RECOVERED CANDIDATES':tool==='signal'?'02 / CHANNEL VIEW':'02 / STATION REFERENCE'}</span>
+        {error&&<p className="tool-error" role="alert">{error}</p>}
+      </div>
+      <section className="machine-reading" aria-label="Instrument result" aria-live="polite">
         {tool==='recovery'?<>
-          <h3>What remains in the bytes</h3>
-          {candidates.length>0?<div className="candidate-list">{candidates.map((candidate,i)=><button key={candidate.offset} className={`candidate ${selected?.offset===candidate.offset?'chosen':''}`} disabled={!candidate.valid||busy} onClick={()=>{const a=artifacts.find(a=>a.offset===candidate.offset&&a.bytes.length===candidate.length&&a.name.startsWith(module?.name.replace(/\.[^.]+$/,'')??''));if(a)onSelect(a.id);setRecorded(false);}}>
-            <span>{candidate.valid?'▧':'╱'} <strong>Candidate {String(i+1).padStart(2,'0')}</strong></span><span className="mono">0x{candidate.offset.toString(16).toUpperCase().padStart(6,'0')}</span><small>{candidate.valid?`${candidate.width} × ${candidate.height} · ${candidate.length.toLocaleString()} bytes`:candidate.status}</small>
-          </button>)}</div>:<div className="empty-state"><div className="reticle">⌁</div><p>Load a recorder.<br/>Look beneath the index.</p></div>}
-          {selected?.recovered&&<><Preview bytes={selected.bytes}/><p className="tiny muted">Original recovered PNG. Select each candidate; older images can be present alongside recent ones.</p></>}
-        </>:tool==='signal'?<>
-          <h3>A quieter channel</h3><div className="segmented" role="group" aria-label="Channel scheme">{(['RGB','R','G','B'] as Scheme[]).map(s=><button disabled={busy} key={s} aria-pressed={scheme===s} onClick={()=>{setScheme(s);void audio.play('channel');}}>{s}</button>)}</div>
-          <label className="toggle"><input type="checkbox" checked={lowest} onChange={e=>setLowest(e.target.checked)}/>Show lowest bit plane</label>
-          {selected?<PixelView bytes={selected.bytes} scheme={scheme} lowest={lowest}/>:<div className="empty-state"><span className="reticle">∿</span><p>No image selected.</p></div>}
-          <p className="tiny muted">Pixels in row order · alpha ignored · one low bit per selected component · most-significant bit first.</p><button className="primary full" disabled={!selected||busy} onClick={doSignal}>{busy?'Reading…':`Decode ${scheme} signal`} <span>→</span></button>
+          <h3>{recovery?.kind==='recovery'?recovery.count?`${recovery.count} image${recovery.count===1?'':'s'} recovered`:'No complete images found':'Waiting for recovery'}</h3>
+          {!!images.length&&<div className="recovered-cards">{images.map((file,i)=><button className={selected?.id===file.id?'chosen':''} key={file.id} aria-label={`Image ${i+1}`} aria-pressed={selected?.id===file.id} onClick={()=>choose(file)} disabled={busy}><Preview bytes={file.bytes}/><span>Image {i+1}</span></button>)}</div>}
+          {selected&&<p className="recorder-caption"><strong>Recorder label:</strong> {label(selected)}</p>}
+          {recovery?.kind==='recovery'&&recovery.count>0&&selected&&<p className="result-interpretation">{caseId==='mira'&&selected.origin==='story'?'You recovered an image. Compare what it shows with the repair they described.':practice?'An intact image was recovered even though it was embedded inside the recorder file.':'You recovered an image. Compare what it shows with the visitor’s account.'}</p>}
+          {recovery?.kind==='recovery'&&recovery.rejected>0&&<p>{recovery.rejected===1?'One damaged fragment could not be recovered.':`${recovery.rejected} damaged fragments could not be recovered.`}</p>}
+          {selected&&current&&<div className="claim-fact"><p><strong>{current.name}’s claim</strong>{current.claim}</p>{caseId==='mira'&&<p><strong>{record?.label} · {record?.time}</strong>{factText.mira}</p>}</div>}
         </>:<>
-          <h3>The station remembers</h3><label htmlFor="archive">Reference archive</label><select id="archive" value={customRef?'custom':reference} disabled={busy} onChange={e=>{setCustomRef(null);setReference(e.target.value);}}>{archives.map(a=><option key={a.id} value={a.id}>{a.label}</option>)}{customRef&&<option value="custom">{customRef.name} (local)</option>}</select>
-          <div className="file-card"><span className="file-icon">▥</span><strong>{customRef?.name??archives.find(a=>a.id===reference)!.label}</strong><small>{customRef?'User-supplied reference; no station receipt':`Archive receipt: ${archives.find(a=>a.id===reference)!.receipt}`}</small><p className="tiny muted">Receipt is an independently stored fictional station record, not a timestamp inferred from the examined file.</p></div>
-          <label className="upload-button">↑ Use local reference<input type="file" aria-label="Upload reference file" disabled={busy} onChange={e=>{void upload(e.target.files?.[0],true);e.target.value='';}}/></label>
-          <button className="primary full" disabled={!selected||busy} onClick={doCompare}>{busy?'Hashing original bytes…':'Calculate & compare SHA-256'} <span>→</span></button>
-          <div className="station-record"><span className="eyebrow">INDEPENDENT STATION RECORD</span><strong>{records.find(r=>r.id===(reference==='j4'?'junction':caseId==='rook'?'backup':'camera'))!.label}</strong><small>{records.find(r=>r.id===(reference==='j4'?'junction':caseId==='rook'?'backup':'camera'))!.time}</small><p>{records.find(r=>r.id===(reference==='j4'?'junction':caseId==='rook'?'backup':'camera'))!.text}</p></div>
+          <h3>{result?.kind==='signal'?result.found?'Message received':noMessage:result?.kind==='compare'?result.identical?'Same file':'Different files':tool==='signal'?'Waiting for a signal':'Waiting for comparison'}</h3>
+          {result?.kind==='signal'&&result.found&&<p className="decoded-message">{result.message}</p>}
+          {result?.kind==='compare'&&reference&&<p>{reference.label} · {practice?reference.receipt:`Received ${reference.receipt}`}</p>}
+          {interpretation&&<p className="result-interpretation">{interpretation}</p>}
+          {showFact&&current&&<div className="claim-fact"><p><strong>{current.name}’s claim</strong>{current.claim}</p><p><strong>{record?.label} · {record?.time}</strong>{factText[current.id]}</p></div>}
+          {showFact&&practice&&<p className="practice-note">Practice only. These results do not affect a shift.</p>}
         </>}
       </section>
-      <aside className="instrument-result"><span className="eyebrow">03 / OBSERVATION</span>
-        <h3>{tool==='recovery'?'Recovered record':tool==='signal'?'Extracted message':'Byte comparison'}</h3>
-        {tool==='recovery'&&selected?.recovered?<><p className="result-label">Complete PNG</p><dl><dt>Byte offset</dt><dd className="mono">{selected.offset.toLocaleString()}</dd><dt>Original length</dt><dd className="mono">{selected.bytes.length.toLocaleString()} bytes</dd></dl>{metadata&&Object.entries(metadata).map(([key,value])=><div className="metadata" key={key}><small>{key}</small><p>{value}</p></div>)}<p className="tiny muted">PNG text fields are self-reported metadata. They do not certify identity.</p></>:tool==='recovery'?<p className="muted">Run a scan to validate and recover PNG candidates.</p>:null}
-        {tool==='signal'&&(signal?<><p className="result-label">{signal.found?'Supported payload recovered':'No supported message'}</p><p className="signal-message">{signal.message||signal.status}</p></>:<p className="muted">Choose a scheme and decode. The station uses RGB.</p>)}
-        {tool==='compare'&&(comparison?<><p className="result-label">{comparison.identical?'Identical bytes':'Different bytes'}</p><small>Examined SHA-256 / {comparison.sizeA.toLocaleString()} bytes</small><code className="hash">{comparison.hashA}</code><small>Reference SHA-256 / {comparison.sizeB.toLocaleString()} bytes</small><code className="hash">{comparison.hashB}</code><p className="muted">What does this result support about the visitor’s actual claim?</p></>:<p className="muted">SHA-256 is calculated at runtime from both original files.</p>)}
-        <div className="result-actions"><button className="full" disabled={!canRecord||busy||recorded} onClick={record}>{recorded?'✓ Finding recorded':'＋ Record finding'}</button>
-          {selected&&tool!=='signal'&&<button className="full small" disabled={busy} onClick={()=>download(selected.bytes,selected.name,'image/png')}>↓ Export original {selected.name.endsWith('.png')?'PNG':'file'}</button>}
-          {tool==='signal'&&<button className="full small" disabled={!signal?.found||busy} onClick={()=>download(new TextEncoder().encode(signal!.message),'station-message.txt','text/plain')}>↓ Export text</button>}
-          <button className="text-button full" onClick={onNotebook}>Open evidence notebook ↗</button>
-        </div>
-      </aside>
-    </div>
-    <footer className="instrument-footer"><p role="status" aria-live="polite">{busy&&<i className="busy-dot"/>}{status}</p><span>{info.limit}</span></footer>
+    </div>}
   </Modal>;
 }
