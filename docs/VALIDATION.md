@@ -2,11 +2,14 @@
 
 ## Verified by automated tests
 
+Current result: **41 tests passing across four suites**, plus a successful TypeScript check and Vite production build.
+
 - Real nonzero-offset PNG recovery; multiple images in Mira’s module; incomplete candidate visibility.
 - False signatures, invalid chunk lengths, malformed CRC including IEND, truncation, unsupported depth/color/interlace, empty/oversized data, and dimension bounds.
 - Actual Vela RGB message; wrong channels; no-header language; newly encoded visitor-independent RGBA/UTF-8 example; impossible length and invalid UTF-8 rejection.
 - Runtime SHA-256 equality for Rook/Nacre and C7; changed-byte mismatch; Mira repaired/old mismatch; original-byte export round trip.
 - All sixteen full-shift ending combinations; fresh full/demo resets; no initial demo findings; decisions do not immediately reveal identity.
+- Category gain × master gain, live gain updates, old ambience cleanup, and graceful operation with unavailable audio hardware (audio-graph test doubles; listening checks still pending).
 
 ## Interface verification approach
 
