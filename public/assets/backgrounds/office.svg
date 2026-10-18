@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="Provisional illustration of the Pelagic-9 control room">
+<defs>
+  <radialGradient id="room"><stop stop-color="#17312f"/><stop offset=".65" stop-color="#081619"/><stop offset="1" stop-color="#03090e"/></radialGradient>
+  <radialGradient id="lamp"><stop stop-color="#bbe9c2" stop-opacity=".19"/><stop offset="1" stop-color="#8fd5ac" stop-opacity="0"/></radialGradient>
+  <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#24443b"/><stop offset="1" stop-color="#102425"/></linearGradient>
+  <linearGradient id="floor" x2="0" y2="1"><stop stop-color="#0d2021"/><stop offset="1" stop-color="#02080d"/></linearGradient>
+  <pattern id="vent" width="18" height="10" patternUnits="userSpaceOnUse"><path d="M2 4H14" stroke="#020a0e" stroke-width="4"/></pattern>
+</defs>
+<path fill="url(#room)" d="M0 0H1920V1080H0z"/>
+<!-- Structural ribs and flooded observation glass. -->
+<path d="M0 0H1920V107H0z" fill="#030a0e"/>
+<path d="M0 115 689 156 1230 156 1920 110M0 160 680 203 1236 201 1920 157" fill="none" stroke="#1a2f2e" stroke-width="3"/>
+<path d="M0 179 675 215 679 650 0 767zM1240 214 1920 178 1920 765 1235 647z" fill="#061014" stroke="#233a34" stroke-width="4"/>
+<path d="M82 230 605 251 609 571 78 637zM1307 251 1833 230 1839 631 1307 571z" fill="#0c2022" stroke="#182e2c" stroke-width="6"/>
+<path d="M93 248 597 268 597 404 86 447zM1321 268 1820 247 1825 459 1320 409z" fill="#112b2c"/>
+<path d="m96 416 127-38 105 29 88-61 183 37v165L86 613zM1319 399l120-47 99 34 127-30 158 64v185l-505-48z" fill="#0a1a1f"/>
+<g fill="none" stroke="#253d36" stroke-width="9"><path d="m352 240-2 365M1572 240l3 366"/><path d="m78 450 530-43M1309 407l526 43"/></g>
+<g fill="#719881" opacity=".35"><circle cx="164" cy="296" r="2"/><circle cx="526" cy="326" r="2"/><circle cx="453" cy="490" r="1.5"/><circle cx="1400" cy="308" r="2"/><circle cx="1712" cy="356" r="1"/><circle cx="1774" cy="521" r="2"/></g>
+<path d="M0 0 73 0 82 736 0 796M1845 0H1920V797l-85-61z" fill="#051014" stroke="#1b302d" stroke-width="5"/>
+<path d="m38 0 15 650M1884 0l-14 651" stroke="#2c4137" stroke-width="3"/>
+<path d="M635 0h70l14 698-67 18zM1211 0h70l-21 711-64-16z" fill="#09171b" stroke="#263b32" stroke-width="3"/>
+<path d="M673 0 681 187M1247 0l-6 184" stroke="#526753" stroke-width="4"/>
+<path d="M0 770 717 648h479l724 121v311H0z" fill="url(#floor)"/>
+<g fill="none" stroke="#20332c" opacity=".6"><path d="m714 662-473 418M836 683l-177 397M1086 683l194 397M1198 667l493 413M0 882h1920M0 1012h1920"/><path d="m512 801 904 1" stroke-width="4"/></g>
+<!-- Rear airlock, at 42–60% / 21–69%. -->
+<ellipse cx="982" cy="470" rx="430" ry="435" fill="url(#lamp)"/>
+<path d="m782 212 33-27h335l35 30-6 514-29 38H816l-36-32z" fill="#091317" stroke="#3b5343" stroke-width="6"/>
+<path d="m813 232 21-18h297l19 20-1 471-18 30H838l-21-25z" fill="#1a302b" stroke="#506653" stroke-width="3"/>
+<path d="m838 248 278 1 10 453-275-1z" fill="#112323" stroke="#2b4036" stroke-width="3"/>
+<path d="m851 259 128-1-1 428-122 1z" fill="#18312b"/>
+<path d="m984 258 121 1 8 429-129-2z" fill="#0c1c1f"/>
+<path d="m982 255-2 437" stroke="#6e8b69" stroke-width="2"/>
+<path d="m944 308 77-1 17 17-1 108-19 18h-76l-18-19 1-106z" fill="#020b10" stroke="#405e4c" stroke-width="9"/>
+<path d="m939 325 81-1 1 105-80 2z" fill="url(#glass)"/>
+<path d="m949 335 57-1-58 76" fill="#5b8066" opacity=".17"/>
+<path d="M945 360h68M974 328v98" stroke="#09191d" stroke-width="5"/>
+<path d="M1034 488h37v67h-37z" fill="#071015" stroke="#4c6653" stroke-width="3"/>
+<path d="M1053 497v42l-9 8" fill="none" stroke="#85a582" stroke-width="5"/>
+<path d="M835 231h293" stroke="#729773" stroke-width="4"/>
+<path d="M854 198h255" stroke="#afdbac" stroke-width="7"/>
+<path d="m824 726 320-1-18 25H844z" fill="#59705a"/>
+<path d="M839 732h290" stroke="#09181b" stroke-width="4"/>
+<path d="M762 307h-28v182h29M1202 307h24v181h-25" fill="none" stroke="#364b3c" stroke-width="12"/>
+<g fill="#0b181b" stroke="#4b6350" stroke-width="2"><circle cx="800" cy="229" r="5"/><circle cx="1165" cy="230" r="5"/><circle cx="801" cy="708" r="5"/><circle cx="1164" cy="707" r="5"/></g>
+<!-- Left recovery station, screen and cradle form one physical desk. -->
+<ellipse cx="412" cy="625" rx="420" ry="290" fill="url(#lamp)"/>
+<path d="m80 764 497-89 202 83-7 126-698 34z" fill="#071217" stroke="#31473a" stroke-width="4"/>
+<path d="m91 760 496-82 203 80-493 84z" fill="#293c31" stroke="#49634b" stroke-width="3"/>
+<path d="m108 774 175 58 489-77-6 28-474 87-182-63z" fill="#12231f"/>
+<path d="m109 825 49 17-11 238H95zM700 832l45-8 51 256h-56z" fill="#0c1b1b"/>
+<path d="m185 467 344-33 97 56-2 248-348 44-91-55z" fill="#172a26" stroke="#526a50" stroke-width="5"/>
+<path d="m207 481 317-29 73 43-318 32z" fill="#34503c"/>
+<path d="m205 497 72 32 1 225-72-37z" fill="#0b191b"/>
+<path d="m286 536 303-30-2 197-300 37z" fill="#020c10" stroke="#2a4233" stroke-width="8"/>
+<path d="m300 548 274-28-2 166-271 35z" fill="#1b4537"/>
+<path d="m313 561 247-25-2 139-243 31z" fill="#0e2b26"/>
+<path d="m328 668 28-9 10-45 29-9 17 23 32-49 29-5 20 39 31-14 19 35" fill="none" stroke="#a7dca9" stroke-width="3"/>
+<g fill="none" stroke="#3d7454" stroke-width="1.4"><path d="m320 576 231-23M320 609l230-26M320 641l229-27M350 566v128M395 560v130M440 556v126M485 550v127M528 545v128"/></g>
+<path d="m317 717 85-9M419 704l89-11" stroke="#3d5640" stroke-width="5"/>
+<circle cx="559" cy="713" r="7" fill="#afdba4"/>
+<path d="m287 770 93-13 1 21-92 14z" fill="#516349"/>
+<path d="m583 699 95-12 59 41-100 18z" fill="#142620" stroke="#76916a" stroke-width="3"/>
+<path d="m598 701 65-7 35 24-67 12z" fill="#030d12"/>
+<path d="m610 699 10-27 51-4 11 35-51 10z" fill="#52644a" stroke="#92a77d" stroke-width="2"/>
+<path d="m623 681 35-4M625 687l34-4" stroke="#182a25" stroke-width="3"/>
+<path d="m637 754 41-6" stroke="#b3ddb0" stroke-width="4"/>
+<path d="M209 557v132l47 24V542z" fill="url(#vent)"/>
+<path d="M215 733c-28 7-62 23-49 52s63 29 79 47" fill="none" stroke="#02090e" stroke-width="11"/>
+<path d="m93 889 654-39" stroke="#344a37" stroke-width="3"/>
+<!-- Upper-right signal scope. -->
+<ellipse cx="1518" cy="554" rx="290" ry="250" fill="url(#lamp)"/>
+<path d="m1274 431 55-46 358 23 71 61-21 237-430-21z" fill="#1e332c" stroke="#4f654a" stroke-width="5"/>
+<path d="m1295 437 380 25 61 20-422-14z" fill="#3b533a"/>
+<path d="m1323 478 275 13-1 170-285-14z" fill="#020c10" stroke="#08181b" stroke-width="10"/>
+<path d="m1334 490 251 12-1 145-259-11z" fill="#16352d"/>
+<path d="m1342 574 25 1 12-8 16 24 12-67 13 91 13-48 18 15 20-17 9 6 12-48 14 70 15-20 10 1 16-23 11 37 12-6 25 1" fill="none" stroke="#b6e8bd" stroke-width="3"/>
+<path d="m1340 526 236 11M1337 558l239 12M1335 595l241 11M1374 499l-2 140M1418 500l-1 142M1462 503l-1 140M1506 505v140M1550 507v140" fill="none" stroke="#345342" stroke-width="1"/>
+<path d="m1622 485 86 3-7 169-80-4z" fill="#102220"/>
+<g fill="#304a35" stroke="#728968" stroke-width="3"><circle cx="1663" cy="524" r="24"/><circle cx="1660" cy="589" r="24"/></g>
+<path d="m1663 524 7-15M1660 589l-12 12" stroke="#d3e8c2" stroke-width="3"/>
+<path d="m1327 673 140 7M1526 683l58 3" stroke="#7c9971" stroke-width="3"/>
+<path d="m1650 671 28 1" stroke="#b4e8bd" stroke-width="5"/>
+<path d="m1288 706 460 23-3 23-473-25z" fill="#283e2e" stroke="#4d6348" stroke-width="2"/>
+<path d="M1744 493c47 2 40 43 73 48v193" fill="none" stroke="#2b4133" stroke-width="8"/>
+<!-- Lower-right comparator's paired glass wells. -->
+<path d="m1266 791 431-34 143 114-13 128-551 21z" fill="#101f20" stroke="#41563e" stroke-width="4"/>
+<path d="m1281 789 411-28 126 109-437 50z" fill="#304433" stroke="#708465" stroke-width="3"/>
+<path d="m1301 805 170-13 71 61-175 20zM1500 790l173-11 89 70-184 19z" fill="#081519" stroke="#536e50" stroke-width="4"/>
+<path d="m1321 812 141-10 50 43-141 15zM1522 798l142-9 65 51-146 17z" fill="#174134"/>
+<path d="m1348 820 79-7 32 26-82 9zM1556 805l78-6 38 30-81 9z" fill="#91bc8d" opacity=".75"/>
+<path d="m1360 825 54-5M1370 834l54-5M1568 811l55-4M1580 820l55-5" stroke="#284b34" stroke-width="3"/>
+<path d="m1400 893 175-18" stroke="#9bc992" stroke-width="4"/>
+<path d="m1297 927 510-46-2 93-505 26z" fill="#0c171b"/>
+<path d="m1327 950 108-10-1 23-106 7z" fill="#030c11" stroke="#405a3e" stroke-width="2"/>
+<g fill="#8aab7a"><circle cx="1738" cy="930" r="6"/><circle cx="1763" cy="928" r="6"/></g>
+<path d="m1300 1016 9 64h40l-6-66M1766 994l5 86h42l-13-87" fill="#091619"/>
+<!-- The room's small lived-in traces. -->
+<path d="m702 307-29 11-6 77 35-5z" fill="#526449" stroke="#192b25" stroke-width="3"/>
+<path d="m681 328 11-3M679 340l12-3M679 351l9-2M677 364l14-3" stroke="#203b2c" stroke-width="2"/>
+<path d="M113 202c3 16 29 25 28 47s-12 39-5 55" fill="none" stroke="#425143" stroke-width="2"/>
+<path d="m1129 106 70-6 4 49-70 6z" fill="#2c4030" stroke="#0a181b" stroke-width="5"/>
+<g fill="#9fbd8b"><circle cx="1150" cy="128" r="4"/><circle cx="1166" cy="126" r="4"/></g><circle cx="1183" cy="124" r="4" fill="#3c5c3e"/>
+<path d="M0 1043c174-16 304 30 485 37H0zM1920 1027c-145 13-216 26-327 53h327z" fill="#02070c"/>
+<path d="M0 0H1920V1080H0z" fill="none" stroke="#02070b" stroke-width="38"/>
+</svg>

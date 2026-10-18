@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "deterministic": true,
+  "format": "8-bit non-interlaced RGB / RGBA PNG",
+  "lsb": "P9LSB1; uint16 big-endian UTF-8 byte length; MSB first; RGB row order; alpha ignored",
+  "files": {
+    "mira": {
+      "module": "mira.bin",
+      "validPngs": 2,
+      "truncatedPngs": 1,
+      "reference": "archive-j4.png",
+      "serviceMatchesArchive": false
+    },
+    "vela": {
+      "module": "vela.bin",
+      "message": "P2 FLOODING. 22:06. OPEN CHANNEL COMPROMISED. ISOLATE PUMP TWO. VELA."
+    },
+    "rook": {
+      "module": "rook.bin",
+      "identicalTo": "archive-c7.png"
+    },
+    "nacre": {
+      "module": "nacre.bin",
+      "identicalTo": "archive-c7.png"
+    }
+  },
+  "receipts": {
+    "archive-c7.png": "Day 183 19:10",
+    "archive-j4.png": "Day 182 16:30"
+  }
+}

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" role="img" aria-label="Provisional illustration of the underwater refuge intake">
+<defs><radialGradient id="water" cx=".28" cy=".37" r=".76"><stop stop-color="#24483f"/><stop offset=".45" stop-color="#102726"/><stop offset="1" stop-color="#030b12"/></radialGradient><linearGradient id="light" x1="0" y1="0" x2=".7" y2="1"><stop stop-color="#c5e9be" stop-opacity=".18"/><stop offset="1" stop-color="#a3dcb8" stop-opacity="0"/></linearGradient></defs>
+<path fill="url(#water)" d="M0 0h1920v1080H0z"/>
+<path d="m165 0 459 0 398 1080H0z" fill="url(#light)"/>
+<path d="m0 694 142-30 85 25 126-42 118 36 93-34 115 55 87-20 149 70 146 19v307H0z" fill="#06151a"/>
+<path d="m0 856 135-49 139 21 91-37 135 58 131-13 92 49 206-22 174 82v135H0z" fill="#030c12"/>
+<path d="m0 1014 252-78 190 30 95-13 155 65 225-13 118 75H0z" fill="#02080d"/>
+<path d="m902 0 82 84 20 114-39 98 47 145-38 149 21 151-50 149 40 190h935V0z" fill="#061015" opacity=".57"/>
+<!-- Far station cable and ruined handrail sit behind the visitor. -->
+<path d="M0 332c186 28 341 97 524 82s340-112 478-139" fill="none" stroke="#091d21" stroke-width="15"/>
+<path d="M0 325c186 28 341 97 524 82s340-112 478-139" fill="none" stroke="#315047" stroke-width="2"/>
+<path d="m82 766 6-125 193 25 8 89M289 665l208-19 8 143M505 647l167 40 5 105" fill="none" stroke="#193430" stroke-width="10"/>
+<path d="m87 645 195 25M292 668l201-18" fill="none" stroke="#49664e" stroke-width="2"/>
+<g fill="#91b79a" opacity=".27"><circle cx="122" cy="415" r="2"/><circle cx="232" cy="212" r="2"/><circle cx="378" cy="316" r="1.5"/><circle cx="472" cy="179" r="3"/><circle cx="648" cy="343" r="2"/><circle cx="726" cy="166" r="2"/><circle cx="864" cy="433" r="2.5"/><circle cx="808" cy="586" r="1.5"/><circle cx="213" cy="606" r="2"/><circle cx="553" cy="524" r="2"/><circle cx="409" cy="723" r="2"/><circle cx="151" cy="815" r="2"/><circle cx="686" cy="854" r="2"/><circle cx="331" cy="103" r="2"/></g>
+<!-- Black irregular bulkhead frames the water, leaving the right side quiet. -->
+<path d="M0 0h1920v100l-166-18-193 11-239-20-227 19-243-19-168 10-213-15-167 30-174-8-130 44z" fill="#02080d"/>
+<path d="M0 0h84l22 138-27 185 18 156-15 177 19 226-20 198H0z" fill="#071317" stroke="#344a3c" stroke-width="6"/>
+<path d="m44 0 11 226-8 318 12 253-11 283" fill="none" stroke="#52614a" stroke-width="4"/>
+<path d="M1811 0h109v1080h-144l15-224-16-185 24-206-7-235z" fill="#02080e"/>
+<path d="M77 1050c354-43 576-50 862-22s510 25 981-4v56H76z" fill="#15241f" stroke="#344936" stroke-width="3"/>
+<path d="m89 1061 461-22 287 17M1290 1065l424-12" stroke="#586747" stroke-width="2"/>
+<!-- Intake lamp and empty parcel tray. -->
+<path d="m176 69 193-5 28 28-12 41-208-1-20-32z" fill="#172921" stroke="#52614a" stroke-width="4"/>
+<path d="m183 91 190-3-8 26-177 1z" fill="#b5dca9"/>
+<path d="M274 70V0" stroke="#2a3d2e" stroke-width="15"/>
+<path d="m599 925 177-12 59 50-187 17z" fill="#25392d" stroke="#567050" stroke-width="3"/>
+<path d="m615 931 157-9 34 32-160 15z" fill="#0b1c1e"/>
+<path d="m647 984 183-17-8 56-175 9z" fill="#13251f"/>
+<path d="m672 1003 51-4" stroke="#b3d8a5" stroke-width="4"/>
+<path d="M0 0h1920v1080H0z" fill="none" stroke="#02070c" stroke-width="22"/>
+</svg>

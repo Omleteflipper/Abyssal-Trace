@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 270" role="img" aria-label="Abyssal Trace">
+<g fill="none" stroke="#bdd8b3" stroke-width="2.5">
+<path d="M99 112c0-37 27-64 63-65 36 0 62 28 62 64s-27 64-63 63-62-28-62-62z"/>
+<path d="m162 29 1 165M78 112h169M116 67l92 92M118 157l89-88" opacity=".48"/>
+<path d="m162 64 16 50-17 41-16-42z" fill="#bdd8b3"/>
+<path d="m162 89 8 25-9 20-7-21z" fill="#112b29" stroke="none"/>
+<path d="M90 214h920M251 33h759" opacity=".4"/>
+</g>
+<text x="266" y="117" fill="#cbe0bd" font-family="Georgia, 'Times New Roman', serif" font-size="89" letter-spacing="13">ABYSSAL</text>
+<text x="271" y="190" fill="#8cac90" font-family="Georgia, 'Times New Roman', serif" font-size="61" letter-spacing="36">TRACE</text>
+<path d="m1004 48 9-15-1 160-9-14" fill="none" stroke="#9bb797" stroke-width="2"/>
+</svg>
