@@ -1,5 +1,6 @@
 # Abyssal Trace
 Solo Submission for Technica 2026
+
 **Four visitors. One underwater refuge. Who can you trust?**
 
 Abyssal Trace is an underwater mystery and investigation game where you play as the last operator of Pelagic-9, a damaged refuge deep in the ocean.
